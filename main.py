@@ -11,17 +11,23 @@ from tinydb import TinyDB, Query
 
 
 LOCAL_TIMEZONE = datetime.datetime.now().astimezone().tzinfo
+ON = True
+OFF = False
 
 
 db = TinyDB(os.path.dirname(os.path.realpath(__file__)) + '/db.json')
 
 
-def js_timestamp_to_today_limits(ts):
-    datetime_ts = datetime.datetime.fromtimestamp(ts / 1000., tz=LOCAL_TIMEZONE)
+def timestamp_to_today_limits(ts, js=True):
+    ts = ts / 1000. if js else ts
+    datetime_ts = datetime.datetime.fromtimestamp(ts, tz=LOCAL_TIMEZONE)
     datetime_day_start = datetime_ts.replace(hour=0, minute=0, second=0, microsecond=0)
     datetime_day_end = datetime_day_start + datetime.timedelta(hours=24)
-    timestamp_day_start = datetime.datetime.timestamp(datetime_day_start) * 1000
-    timestamp_day_end = datetime.datetime.timestamp(datetime_day_end) * 1000
+    timestamp_day_start = datetime.datetime.timestamp(datetime_day_start)
+    timestamp_day_end = datetime.datetime.timestamp(datetime_day_end)
+    if js:
+        timestamp_day_start *= 1000
+        timestamp_day_end *= 1000
     return timestamp_day_start, timestamp_day_end
 
 
@@ -66,19 +72,21 @@ class Handler(BaseHTTPRequestHandler):
         elif msg_type == 'req':
             # Based on received timestamp get total time that day
             ts = message['timestamp']
-            ts_day_start, ts_day_end = js_timestamp_to_today_limits(ts)
+            ts_day_start, ts_day_end = timestamp_to_today_limits(ts)
             q = Query()
             results = db.search((q.timestamp >= ts_day_start) & (q.timestamp < ts_day_end))
             total_time = 0
             prev_ts = 0
+            last_toggle = None
             for result in results:
                 ts = result['timestamp']
                 assert ts > prev_ts
                 toggle = result['toggleOn']
-                if not toggle and prev_ts != 0:  # toggle off
+                if toggle == OFF and last_toggle == ON and prev_ts != 0:  # toggle off
                     total_time += ts - prev_ts
-                elif not toggle and prev_ts == 0:
+                elif toggle == OFF and last_toggle is None and prev_ts == 0:
                     total_time += ts - ts_day_start
+                last_toggle = toggle
                 prev_ts = ts
             self._set_headers()
             self.wfile.write(json.dumps({'total': total_time}).encode('utf-8'))
