@@ -63,7 +63,9 @@ class Handler(BaseHTTPRequestHandler):
             # Based on received timestamp get total time that day
             ts = message['timestamp']
             ts_day_start, ts_day_end = timestamp_to_today_limits(ts)
+            print(ts_day_start)
             days = list(get_daily_totals(db, ts_day_start / 1000.).items())
+            print(days)
             total_time = 0 if len(days) == 0 else days[0][1]
             self._set_headers()
             self.wfile.write(json.dumps({'total': total_time}).encode('utf-8'))
@@ -71,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def run():
     logging.basicConfig(level=logging.INFO)
-    server_address = ('', 8080)
+    server_address = ('', 8089)
     httpd = HTTPServer(server_address, Handler)
     logging.info('Starting httpd...\n')
     try:

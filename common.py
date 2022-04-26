@@ -31,10 +31,10 @@ def get_daily_totals(db: TinyDB, ts_start: float) -> Dict[float, float]:
     :param ts_start: Timestamp from which to get totals (in seconds)
     :return: Dictionary where keys - date timestamps (JS), values - milliseconds
     """
-    prev_ts = Query()
+    query = Query()
     if ts_start is not None:
         js_ts_start = ts_start * 1000
-        results = db.search(prev_ts.timestamp >= js_ts_start)
+        results = db.search(query.timestamp >= js_ts_start)
     else:
         results = db.all()
 
@@ -46,6 +46,9 @@ def get_daily_totals(db: TinyDB, ts_start: float) -> Dict[float, float]:
     prev_ts = results[0]['timestamp']
     prev_toggle = results[0]['toggle']
     prev_day, _ = timestamp_to_today_limits(prev_ts)
+
+    if prev_toggle == OFF:
+        days[prev_day] = prev_ts - prev_day
 
     for result in results[1:]:
         this_ts = result['timestamp']
